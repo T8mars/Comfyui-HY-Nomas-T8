@@ -76,8 +76,13 @@ async def local_requests(request, handler):
     if host not in ("127.0.0.1", "localhost"):
         raise web.HTTPForbidden(text="Local use only")
     origin = request.headers.get("Origin")
-    if origin and urlparse(origin).netloc != request.host:
-        raise web.HTTPForbidden(text="Cross-origin requests are not allowed")
+    if origin:
+        try:
+            parsed = urlparse(origin)
+        except ValueError as exc:
+            raise web.HTTPForbidden(text="Invalid request origin") from exc
+        if parsed.scheme != request.scheme or parsed.netloc != request.host or parsed.path or parsed.params or parsed.query or parsed.fragment:
+            raise web.HTTPForbidden(text="Cross-origin requests are not allowed")
     return await handler(request)
 
 
@@ -146,15 +151,20 @@ def make_app(studio=None):
         return web.json_response({"id": studio.job["id"]}, status=202)
 
     async def upload(request):
-        reader = await request.multipart()
-        field = await reader.next()
-        if field is None or field.name != "image":
-            raise web.HTTPBadRequest(text="请选择图片。")
-        data = bytearray()
-        while chunk := await field.read_chunk():
-            data.extend(chunk)
-            if len(data) > 20 * 1024**2:
-                raise web.HTTPRequestEntityTooLarge(max_size=20*1024**2, actual_size=len(data))
+        try:
+            if request.content_type != "multipart/form-data":
+                raise web.HTTPBadRequest(text="请使用 multipart/form-data 上传图片。")
+            reader = await request.multipart()
+            field = await reader.next()
+            if field is None or field.name != "image" or not hasattr(field, "read_chunk"):
+                raise web.HTTPBadRequest(text="请选择图片。")
+            data = bytearray()
+            while chunk := await field.read_chunk():
+                data.extend(chunk)
+                if len(data) > 20 * 1024**2:
+                    raise web.HTTPRequestEntityTooLarge(max_size=20*1024**2, actual_size=len(data))
+        except (ValueError, AssertionError) as exc:
+            raise web.HTTPBadRequest(text="图片上传数据不完整或格式错误。") from exc
         import io
         try:
             with Image.open(io.BytesIO(data)) as image:
@@ -164,7 +174,7 @@ def make_app(studio=None):
                 folder = ROOT / "inputs"
                 folder.mkdir(exist_ok=True)
                 image.convert("RGB").save(folder / f"{image_id}.png")
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, Image.DecompressionBombError) as exc:
             raise web.HTTPBadRequest(text=str(exc))
         return web.json_response({"id": image_id})
 

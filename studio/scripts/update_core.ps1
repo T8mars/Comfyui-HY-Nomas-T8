@@ -20,9 +20,49 @@ function Write-UpdateJson($Path, $Value) {
     } finally { if (Test-Path -LiteralPath $temporary) { [IO.File]::Delete($temporary) } }
 }
 
+function Get-ProgramCanonicalPath([string]$Path) {
+    $full = [IO.Path]::GetFullPath($Path)
+    if ((Test-Path -LiteralPath $full) -and -not ('HyNomasUpdateNativePaths' -as [type])) {
+        Add-Type @'
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
+public static class HyNomasUpdateNativePaths {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    private static extern SafeFileHandle CreateFile(string path, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    private static extern uint GetFinalPathNameByHandle(SafeFileHandle file, StringBuilder path, uint size, uint flags);
+    public static string Resolve(string path) {
+        using(var handle=CreateFile(path, 0, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero)) {
+            if(handle.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error());
+            var buffer=new StringBuilder(512);
+            uint length=GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Capacity, 0);
+            if(length==0) throw new Win32Exception(Marshal.GetLastWin32Error());
+            if(length>=buffer.Capacity) {
+                buffer=new StringBuilder(checked((int)length+1));
+                length=GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Capacity, 0);
+                if(length==0 || length>=buffer.Capacity) throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            string value=buffer.ToString();
+            if(value.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase)) return @"\\"+value.Substring(8);
+            if(value.StartsWith(@"\\?\", StringComparison.Ordinal)) return value.Substring(4);
+            return value;
+        }
+    }
+}
+'@
+    }
+    if (Test-Path -LiteralPath $full) { $full = [HyNomasUpdateNativePaths]::Resolve($full) }
+    $volumeRoot = [IO.Path]::GetPathRoot($full)
+    if ($full.Length -gt $volumeRoot.Length) { $full = $full.TrimEnd('\','/') }
+    return $full
+}
+
 function New-ProgramMutex([string]$Root) {
     $sha = [Security.Cryptography.SHA256]::Create()
-    try { $key = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes([IO.Path]::GetFullPath($Root).ToUpperInvariant()))).Replace('-','') }
+    try { $key = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes((Get-ProgramCanonicalPath $Root).ToUpperInvariant()))).Replace('-','') }
     finally { $sha.Dispose() }
     return [Threading.Mutex]::new($false, "Local\HyNomasUpdate-$key")
 }
@@ -68,19 +108,33 @@ function Assert-NoReparse([string]$Root, [string]$Path) {
 }
 
 function Get-ProgramProcesses([string]$Root) {
-    $prefix = [IO.Path]::GetFullPath((Join-Path $Root 'runtime')).TrimEnd('\') + '\'
+    $prefix = (Get-ProgramCanonicalPath (Join-Path $Root 'runtime')).TrimEnd('\') + '\'
     return @(Get-CimInstance Win32_Process -Filter "Name = 'python.exe' OR Name = 'pythonw.exe'" -ErrorAction Stop |
-        Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) })
+        Where-Object {
+            if (-not $_.ExecutablePath) { return $false }
+            $executablePath = $_.ExecutablePath
+            try { $executable = Get-ProgramCanonicalPath $executablePath }
+            catch {
+                # A different project's file can disappear or deny metadata access
+                # after the process snapshot. Its path must not break this launcher.
+                try { $executable = [IO.Path]::GetFullPath($executablePath) }
+                catch { return $false }
+            }
+            $executable.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
+        })
 }
 
 function Assert-UpdateManifest($Manifest) {
-    if ($Manifest.schema -ne 1 -or $Manifest.app -ne 'hy-nomas-t8-studio' -or $Manifest.updater_schema -ne 1) { throw 'Unsupported update format.' }
+    if (-not ($Manifest.schema -is [int] -or $Manifest.schema -is [long]) -or $Manifest.schema -ne 1 -or
+        $Manifest.app -cne 'hy-nomas-t8-studio' -or
+        -not ($Manifest.updater_schema -is [int] -or $Manifest.updater_schema -is [long]) -or $Manifest.updater_schema -ne 1) { throw 'Unsupported update format.' }
     Get-UpdateVersion $Manifest.version | Out-Null
     if ($Manifest.archive.name -ne "Hy-Nomas-T8-Program-$($Manifest.version)-win64.zip" -or
         $Manifest.archive.sha256 -notmatch '^[a-f0-9]{64}$' -or
         -not ($Manifest.archive.bytes -is [int] -or $Manifest.archive.bytes -is [long]) -or
         $Manifest.archive.bytes -le 0 -or $Manifest.archive.bytes -gt 536870912) { throw 'Invalid archive metadata.' }
     if ($Manifest.runtime_lock_sha256 -notmatch '^[a-f0-9]{64}$') { throw 'Missing runtime compatibility fingerprint.' }
+    if (-not ($Manifest.files -is [Collections.IList])) { throw 'Manifest files must be a JSON array.' }
     $seen = @{}
     [long]$total = 0
     foreach ($file in $Manifest.files) {
@@ -92,8 +146,18 @@ function Assert-UpdateManifest($Manifest) {
         $total += $file.bytes
     }
     if ($total -gt 536870912 -or $seen.Count -eq 0 -or $seen.Count -gt 10000) { throw 'Invalid expanded update size/file count.' }
+    foreach ($name in $seen.Keys) {
+        $parts = $name.Split('/')
+        $parent = ''
+        for ($i = 0; $i -lt $parts.Length - 1; $i++) {
+            if ($parent) { $parent += '/' }
+            $parent += $parts[$i]
+            if ($seen.ContainsKey($parent)) { throw "Program file is also a parent directory: $parent" }
+        }
+    }
     foreach ($required in @('app-version.json','program-files.json','requirements.lock.txt','nomas_app/server.py',
-        'scripts/update_app.ps1','scripts/update_core.ps1','启动整合包.cmd','启动ComfyUI原生节点.cmd')) {
+        'scripts/update_app.ps1','scripts/update_core.ps1','scripts/launch_app.ps1','scripts/release_catalog.ps1',
+        '启动整合包.cmd','启动ComfyUI原生节点.cmd')) {
         if (-not $seen.ContainsKey($required)) { throw "Missing required program file: $required" }
     }
 }
@@ -174,7 +238,9 @@ function Restore-ProgramUpdate([string]$Root) {
         if (@(Get-ProgramProcesses $Root).Count -gt 0) { throw 'Close this installation before recovery.' }
         if ((Get-Item -LiteralPath $journalPath).Length -gt 8388608) { throw 'Recovery transaction is too large.' }
         $journal = Get-Content -LiteralPath $journalPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($journal.schema -ne 1 -or $journal.app -ne 'hy-nomas-t8-studio' -or
+        if (-not ($journal.schema -is [int] -or $journal.schema -is [long]) -or $journal.schema -ne 1 -or
+            $journal.app -cne 'hy-nomas-t8-studio' -or
+            -not ($journal.files -is [Collections.IList]) -or
             $journal.backup -notmatch '^cache/updates/backups/[a-zA-Z0-9_-]+$') { throw 'Invalid recovery transaction.' }
         $seen = @{}
         if (@($journal.files).Count -eq 0 -or @($journal.files).Count -gt 20000) { throw 'Invalid recovery file count.' }
@@ -223,6 +289,7 @@ function Install-ProgramUpdate([string]$Root, [string]$Stage, $Manifest, [string
     $relativeBackup = $backupPath.Substring($base.Length + 1).Replace('\','/')
     if ($relativeBackup -notmatch '^cache/updates/backups/[a-zA-Z0-9_-]+$') { throw 'Invalid backup directory.' }
     Assert-NoReparse $Root $Backup
+    if (Test-Path -LiteralPath $Backup) { throw 'Backup directory must be new; existing backups are never overwritten.' }
     $new = @{}
     foreach ($f in $Manifest.files) { $new[$f.path] = $f }
     $old = @()

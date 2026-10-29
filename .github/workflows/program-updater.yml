@@ -10,6 +10,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Update verification, data retention and rollback
         shell: powershell
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_updater.ps1
@@ -19,6 +22,10 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_release_catalog.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_update_recovery.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_update_boundaries.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_release_catalog_boundaries.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Controller cache and launcher lifetime
         run: |
@@ -33,3 +40,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python -m unittest discover -s studio/tests -p test_model_paths_api.py -v
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m unittest discover -s studio/tests -p test_upload_api.py -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Image upload and status ordering in the UI
+        run: node studio/tests/test_upload_ui.js

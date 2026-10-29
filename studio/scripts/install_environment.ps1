@@ -57,5 +57,8 @@ Write-Host '推理核心已就绪，继续补齐完整ComfyUI模板资源。' -F
 if ($LASTEXITCODE -ne 0) { throw '模板资源下载失败，断点已保留，可重试。' }
 & $uvPath pip install --python $pythonPath --break-system-packages --find-links (Join-Path $packageRoot 'downloads\wheels') -r $requirementsPath
 if ($LASTEXITCODE -ne 0) { throw '依赖安装失败，请查看启动窗口错误。' }
+& $pythonPath scripts/check_environment.py
+if ($LASTEXITCODE -ne 0) { throw '安装后的依赖与锁定版本不一致，请查看上方检查结果。' }
 & $pythonPath scripts/diagnose.py
+if ($LASTEXITCODE -ne 0) { throw '环境诊断失败，请查看日志。' }
 Write-Host '环境准备完成。请运行 下载模型.cmd 或在界面配置已有模型路径。' -ForegroundColor Green

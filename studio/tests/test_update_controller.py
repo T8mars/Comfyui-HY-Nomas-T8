@@ -56,7 +56,8 @@ class ControllerTests(unittest.TestCase):
         (self.root / 'requirements.lock.txt').write_bytes(b'fixed runtime')
         (self.root / 'app-version.json').write_text('{"version":"0.2.0"}', encoding='utf-8')
         required = ['app-version.json','program-files.json','requirements.lock.txt','nomas_app/server.py',
-                    'scripts/update_app.ps1','scripts/update_core.ps1','启动整合包.cmd','启动ComfyUI原生节点.cmd']
+                    'scripts/update_app.ps1','scripts/update_core.ps1','scripts/launch_app.ps1',
+                    'scripts/release_catalog.ps1','启动整合包.cmd','启动ComfyUI原生节点.cmd']
         manifest = dict(schema=1,app='hy-nomas-t8-studio',version='0.2.1',updater_schema=1,
                         runtime_lock_sha256=hashlib.sha256(b'fixed runtime').hexdigest(),
                         archive=dict(name='Hy-Nomas-T8-Program-0.2.1-win64.zip',bytes=1,sha256='0'*64),

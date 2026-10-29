@@ -1,6 +1,6 @@
 # Hy-Nomas 本地世界工作室 · By T8star
 
-> 以下为 0.2.0 完整包的功能、环境和实测记录。0.2.2 程序版仅提供程序文件；不随附 Python、模型和本地 evidence 目录。请先阅读 [程序版使用与自动更新说明](../README.zh-CN.md)，在线模型和实际视频见 [Hugging Face](https://huggingface.co/t8star/HY-Nomas-Comfy)。
+> 以下为 0.2.0 完整包的功能、环境和实测记录。0.2.3 程序版仅提供程序文件；不随附 Python、模型和本地 evidence 目录。请先阅读 [程序版使用与自动更新说明](../README.zh-CN.md)，在线模型和实际视频见 [Hugging Face](https://huggingface.co/t8star/HY-Nomas-Comfy)。
 
 Windows 粉白色本地界面与原生 ComfyUI 节点，使用同一 Python 推理核心。目标配置为 NVIDIA 24GB 显卡、64GB 系统内存。
 

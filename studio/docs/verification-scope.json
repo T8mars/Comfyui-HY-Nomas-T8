@@ -1,6 +1,7 @@
 {
   "base_gpu_acceptance": "0.2.0",
   "unchanged_gpu_model_engine_and_environment_files": 37,
-  "api_admission": "server.py checks after awaiting JSON body; CPU interleaving and validation regressions cover the change",
-  "gpu_generation_repeated_for_0_2_2": false
+  "api_admission": "CPU interleavings, upload parsing and same-origin checks cover server.py; UI image/status ordering has controlled-response JavaScript tests",
+  "gpu_generation_repeated_for_0_2_3": false,
+  "installer_scope": "Post-install lock/diagnostic exit handling reviewed statically and parsed on Windows PowerShell 5.1; installer binaries and GPU generation were not run in this review"
 }

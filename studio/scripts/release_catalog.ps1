@@ -32,8 +32,10 @@ function Get-ProgramRelease([string]$Repository, [hashtable]$WebOptions) {
                     $complete = $false
                     break
                 }
-                [long]$size = 0
-                if ($asset.state -cne 'uploaded' -or -not [long]::TryParse([string]$asset.size, [ref]$size) -or $size -le 0 -or
+                [long]$maximumSize = 536870912
+                if ($asset.name -ceq $manifestName) { $maximumSize = 8388608 }
+                if ($asset.state -cne 'uploaded' -or -not ($asset.size -is [int] -or $asset.size -is [long]) -or
+                    $asset.size -le 0 -or $asset.size -gt $maximumSize -or
                     $asset.browser_download_url -cne "https://github.com/$Repository/releases/download/v$versionText/$($asset.name)") {
                     $complete = $false
                     break

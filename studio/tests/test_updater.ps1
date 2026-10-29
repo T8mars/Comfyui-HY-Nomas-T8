@@ -31,6 +31,7 @@ function Fixture($FixtureName) {
         'app-version.json' = '{"app":"hy-nomas-t8-studio","version":"0.2.1","updater_schema":1}'
         'nomas_app/server.py' = 'new server'; 'nomas_app/a.py' = 'new a'; 'nomas_app/z.py' = 'new z'
         'scripts/update_core.ps1' = '# new core'; 'scripts/update_app.ps1' = '# new updater'
+        'scripts/launch_app.ps1' = '# new launcher'; 'scripts/release_catalog.ps1' = '# new release catalogue'
         'requirements.lock.txt' = 'fixed runtime'
         '启动整合包.cmd' = '@echo studio'; '启动ComfyUI原生节点.cmd' = '@echo comfy'
     }

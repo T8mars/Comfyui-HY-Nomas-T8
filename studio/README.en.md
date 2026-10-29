@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md) | **English**
 
-Windows program distribution with the pink-and-white studio, native nodes, ComfyUI 0.42.1 host sources and an updater. **Model weights, the Python interpreter and Python site-packages are excluded.** Program version: 0.2.2; model computation retains the GPU-validated 0.2.0 core; API admission and update fixes have CPU/online-upgrade regression coverage.
+Windows program distribution with the pink-and-white studio, native nodes, ComfyUI 0.42.1 host sources and an updater. **Model weights, the Python interpreter and Python site-packages are excluded.** Program version: 0.2.3; model computation retains the GPU-validated 0.2.0 core; UI, API and update fixes have CPU/online-upgrade regression coverage.
 
 ## Setup
 

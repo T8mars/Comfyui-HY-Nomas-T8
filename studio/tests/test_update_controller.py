@@ -67,6 +67,7 @@ class ControllerTests(unittest.TestCase):
         names = ['Hy-Nomas-T8-Program-0.2.1-manifest.json','Hy-Nomas-T8-Program-0.2.1-win64.zip']
         release = dict(tag_name='v0.2.1', draft=False, prerelease=False,
                        assets=[dict(name=n,state='uploaded',size=1,browser_download_url=prefix+n) for n in names])
+        release['assets'][0]['size'] = (self.root / 'manifest.json').stat().st_size
         (self.root / 'release.json').write_text(json.dumps([release]), encoding='utf-8')
         (self.root / 'driver.ps1').write_text(DRIVER, encoding='utf-8-sig')
 
@@ -78,6 +79,7 @@ class ControllerTests(unittest.TestCase):
         result = subprocess.run([PS,'-NoProfile','-ExecutionPolicy','Bypass','-File',str(self.root/'driver.ps1'),mode],
                                 capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=40)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        return result
 
     def state(self, latest='0.2.0', days=0):
         path = self.root / 'cache/updates/state.json'

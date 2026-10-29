@@ -27,20 +27,18 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_release_catalog_boundaries.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Controller cache and launcher lifetime
-        run: |
-          python studio/tests/test_update_controller.py
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_payload_boundaries.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Launcher lifetime and Python environment isolation
+        run: |
           python studio/tests/test_launch_lifetime.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: API admission and model-path regressions without GPU
+          python studio/tests/test_launch_environment.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: API, support, controller and build regressions without GPU
         run: |
           python -m pip install aiohttp pillow psutil
-          python -m unittest discover -s studio/tests -p test_api_admission.py -v
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python -m unittest discover -s studio/tests -p test_model_paths_api.py -v
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python -m unittest discover -s studio/tests -p test_upload_api.py -v
+          python -m unittest discover -s studio/tests -p "test_*.py" -v
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Image upload and status ordering in the UI
         run: node studio/tests/test_upload_ui.js

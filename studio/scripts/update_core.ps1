@@ -211,8 +211,12 @@ function Expand-ProgramUpdate([string]$Archive, [string]$Stage, $Manifest) {
     } finally { $zip.Dispose() }
     if ($seen.Count -ne $expected.Count) { throw 'Incomplete archive.' }
     $version = Get-Content -LiteralPath (Join-Path $Stage 'app-version.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ($version.version -ne $Manifest.version -or $version.app -ne $Manifest.app) { throw 'Payload version mismatch.' }
+    if ($version.version -isnot [string] -or $version.version -cne $Manifest.version -or $version.app -cne $Manifest.app -or
+        -not ($version.updater_schema -is [int] -or $version.updater_schema -is [long]) -or
+        $version.updater_schema -ne $Manifest.updater_schema) { throw 'Payload version/schema mismatch.' }
     $index = Get-Content -LiteralPath (Join-Path $Stage 'program-files.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($index.version -isnot [string] -or $index.version -cne $Manifest.version -or $index.files -isnot [Collections.IList] -or
+        @($index.files | Where-Object { $_ -isnot [string] }).Count -gt 0) { throw 'Payload program index metadata mismatch.' }
     $indexed = @($index.files | Sort-Object)
     $listed = @($expected.Keys | Where-Object { $_ -ne 'program-files.json' } | Sort-Object)
     if (($indexed -join "`n") -cne ($listed -join "`n")) { throw 'Program file index mismatch.' }

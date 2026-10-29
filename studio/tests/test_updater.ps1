@@ -36,7 +36,7 @@ function Fixture($FixtureName) {
         '启动整合包.cmd' = '@echo studio'; '启动ComfyUI原生节点.cmd' = '@echo comfy'
     }
     foreach ($name in $content.Keys) { Put $inputRoot $name $content[$name] }
-    Put $inputRoot 'program-files.json' (@{files=@($content.Keys | Sort-Object)} | ConvertTo-Json)
+    Put $inputRoot 'program-files.json' (@{version='0.2.1';files=@($content.Keys | Sort-Object)} | ConvertTo-Json)
     $archive = Join-Path $testRoot ("fixture-$FixtureName.zip")
     $zip = [IO.Compression.ZipFile]::Open($archive, [IO.Compression.ZipArchiveMode]::Create)
     try {

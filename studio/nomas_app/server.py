@@ -34,7 +34,7 @@ class Studio:
     def models(self):
         try:
             return self.locations.status()
-        except ValueError as exc:
+        except (ValueError, OSError) as exc:
             return [{"id": item["id"], "label": LABELS[item["id"]], "file": Path(item["local"]).name,
                      "path": str(self.locations.config_file), "ready": False, "error": str(exc), "source": "custom"}
                     for item in self.locations.entries]
@@ -57,9 +57,14 @@ class Studio:
                 result = self.engine.snapshot()
             with self.lock:
                 self.job.update(state="done", message="完成", progress=1, result=result)
-            (ROOT / "evidence").mkdir(exist_ok=True)
-            (ROOT / "evidence" / f"job-{self.job['id']}.json").write_text(
-                json.dumps({"action": action, "job": self.job}, ensure_ascii=False, indent=2), encoding="utf-8")
+            try:
+                (ROOT / "evidence").mkdir(exist_ok=True)
+                (ROOT / "evidence" / f"job-{self.job['id']}.json").write_text(
+                    json.dumps({"action": action, "job": self.job}, ensure_ascii=False, indent=2), encoding="utf-8")
+            except (OSError, TypeError, ValueError) as exc:
+                logging.warning("Completed job receipt could not be saved", exc_info=True)
+                with self.lock:
+                    self.job["evidence_warning"] = str(exc)
         except BaseException as exc:
             cancelled = self.engine.cancel_event.is_set() or isinstance(exc, Cancelled)
             logging.exception("Job %s failed", action)
@@ -179,10 +184,13 @@ def make_app(studio=None):
         return web.json_response({"id": image_id})
 
     async def output(request):
-        base = (ROOT / "outputs").resolve()
-        path = (base / request.match_info["path"]).resolve()
-        if not path.is_relative_to(base) or not path.is_file() or path.suffix not in (".mp4", ".json"):
-            raise web.HTTPNotFound()
+        try:
+            base = (ROOT / "outputs").resolve()
+            path = (base / request.match_info["path"]).resolve()
+            if not path.is_relative_to(base) or not path.is_file() or path.suffix not in (".mp4", ".json"):
+                raise web.HTTPNotFound()
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise web.HTTPNotFound() from exc
         return web.FileResponse(path)
 
     async def cleanup(app):

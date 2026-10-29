@@ -68,10 +68,14 @@ def _download(url, target, expected_size, expected_sha, workers=8, chunk_size=8 
     done = set()
     if ledger.exists():
         state = json.loads(ledger.read_text(encoding="utf-8"))
+        if not isinstance(state, dict) or not isinstance(state.get("done"), list):
+            raise ValueError("Invalid range ledger")
         if state.get("identity") != identity:
             raise ValueError(f"Download identity differs; preserve and inspect {ledger}")
         if not partial.exists() or partial.stat().st_size != expected_size:
             raise ValueError(f"Partial file and ledger disagree: {partial}")
+        if any(type(index) is not int for index in state["done"]):
+            raise ValueError("Invalid range ledger")
         done = set(state["done"])
     else:
         # A previous run may have stopped before the first completed range.
@@ -139,7 +143,11 @@ def _download(url, target, expected_size, expected_sha, workers=8, chunk_size=8 
             raise
     print(f"Hashing {target.name}…", flush=True)
     if sha256(partial) != expected_sha:
-        raise ValueError(f"SHA256 mismatch; incomplete file preserved: {partial}")
+        # None of the completed-range claims can be trusted after a final hash
+        # failure. Keep the bytes for inspection, but let the next run fetch them.
+        done.clear()
+        save()
+        raise ValueError(f"SHA256 mismatch; partial file preserved, retry will download all ranges: {partial}")
     if target.exists():
         raise ValueError(f"Target was created during transfer; both files preserved: {target}")
     partial.replace(target)

@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md) | **English**
 
-Windows program distribution with the pink-and-white studio, native nodes, ComfyUI 0.42.1 host sources and an updater. **Model weights, the Python interpreter and Python site-packages are excluded.** Program version: 0.2.3; model computation retains the GPU-validated 0.2.0 core; UI, API and update fixes have CPU/online-upgrade regression coverage.
+Windows program distribution with the pink-and-white studio, native nodes, ComfyUI 0.42.1 host sources and an updater. **Model weights, the Python interpreter and Python site-packages are excluded.** Program version: 0.2.4; model computation retains the GPU-validated 0.2.0 core; UI, prompt timing, API, downloader and update fixes have CPU/online-upgrade regression coverage.
 
 ## Setup
 
@@ -20,6 +20,7 @@ Launchers check this repository's stable Release once every 24 hours by default.
 - `检查更新.cmd`: check only.
 - `更新程序.cmd`: check and install now; close the studio and bundled ComfyUI first.
 - Set `{"auto_update": false}` in `config/update-settings.json` to disable launch-time updates. Optional `interval_hours`: 1–168.
+- Invalid setting types or damaged JSON use reported defaults without rewriting the file; a valid `auto_update: false` is always honored. Entry points ignore external Python paths and user-site packages and use the compatible bundled environment.
 
 Only manifest-listed program files are replaced. Models, Python under `runtime/managed/`, settings, inputs, outputs, caches and other custom nodes are retained. Incompatible dependency locks require a matching full bundle. Old program files are backed up under `cache/updates/backups/`; installation failures roll back automatically and retain the backup. Interrupted updates restore verified backups before the next launch, even when automatic updates are disabled or checks are cached. Corrupt recovery backups block launch and retain the recovery record.
 

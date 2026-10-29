@@ -10,7 +10,8 @@ sys.path.insert(0, str(ROOT))
 from scripts.range_download import download
 from pip._vendor.packaging.requirements import Requirement
 from pip._vendor.packaging.tags import sys_tags
-from pip._vendor.packaging.utils import parse_wheel_filename
+from pip._vendor.packaging.utils import parse_wheel_filename, canonicalize_name
+from pip._vendor.packaging.version import Version
 
 
 def metadata(name, version):
@@ -42,7 +43,12 @@ def main():
         for entry in data["urls"]:
             if not entry["filename"].endswith(".whl") or entry.get("yanked"):
                 continue
-            _, _, _, tags = parse_wheel_filename(entry["filename"])
+            try:
+                wheel_name, wheel_version, _, tags = parse_wheel_filename(entry["filename"])
+            except ValueError:
+                continue
+            if canonicalize_name(wheel_name) != canonicalize_name(name) or wheel_version != Version(version):
+                continue
             ranks = [supported[tag] for tag in tags if tag in supported]
             if ranks:
                 wheels.append((min(ranks), entry))

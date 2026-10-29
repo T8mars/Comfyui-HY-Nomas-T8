@@ -14,11 +14,11 @@ $env:UV_CONCURRENT_DOWNLOADS = '4'
 New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot 'downloads\wheels') | Out-Null
 Set-Location -LiteralPath $packageRoot
 if ((Test-Path -LiteralPath $pythonPath) -and (Test-Path -LiteralPath (Join-Path $packageRoot 'requirements.lock.txt'))) {
-    & $pythonPath scripts/check_environment.py
+    & $pythonPath -E -s -X utf8 scripts/check_environment.py
     if ($LASTEXITCODE -eq 0) {
         & $uvPath pip check --python $pythonPath
         if ($LASTEXITCODE -eq 0) {
-            & $pythonPath scripts/diagnose.py
+            & $pythonPath -E -s -X utf8 scripts/diagnose.py
             if ($LASTEXITCODE -ne 0) { throw '环境诊断失败，请查看日志。' }
             Write-Host '完整环境已就绪，无需重复下载。请运行 启动整合包.cmd。' -ForegroundColor Green
             return
@@ -29,10 +29,10 @@ if (-not (Test-Path -LiteralPath $pythonPath)) {
     & $uvPath python install 3.12.9
     if ($LASTEXITCODE -ne 0) { throw 'Python 安装失败，保留下载缓存后重试。' }
 }
-& $pythonPath -c "import importlib.metadata as m; raise SystemExit(0 if any(d.metadata.get('Name','').lower() == 'torch' and d.version == '2.10.0+cu130' for d in m.distributions()) else 1)"
+& $pythonPath -E -s -X utf8 -c "import importlib.metadata as m; raise SystemExit(0 if any(d.metadata.get('Name','').lower() == 'torch' and d.version == '2.10.0+cu130' for d in m.distributions()) else 1)"
 if ($LASTEXITCODE -ne 0) {
     $torchWheel = Join-Path $packageRoot 'downloads\wheels\torch-2.10.0+cu130-cp312-cp312-win_amd64.whl'
-    & $pythonPath scripts/range_download.py 'https://download-r2.pytorch.org/whl/cu130/torch-2.10.0%2Bcu130-cp312-cp312-win_amd64.whl' $torchWheel --size 1867405006 --sha256 224649fa0ab181ec483cc368e3303dda1760e4ba31bea806b88979f855436aaa --workers 8
+    & $pythonPath -E -s -X utf8 scripts/range_download.py 'https://download-r2.pytorch.org/whl/cu130/torch-2.10.0%2Bcu130-cp312-cp312-win_amd64.whl' $torchWheel --size 1867405006 --sha256 224649fa0ab181ec483cc368e3303dda1760e4ba31bea806b88979f855436aaa --workers 8
     if ($LASTEXITCODE -ne 0) { throw 'PyTorch 分块下载失败，进度已保留，可重试。' }
     & $uvPath pip install --python $pythonPath --break-system-packages $torchWheel torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cu130
 } else {
@@ -53,12 +53,12 @@ $coreRequirementsPath = Join-Path $packageRoot 'downloads\core-requirements.txt'
 & $uvPath pip install --python $pythonPath --break-system-packages --find-links (Join-Path $packageRoot 'downloads\wheels') -r $coreRequirementsPath
 if ($LASTEXITCODE -ne 0) { throw '推理核心依赖安装失败，请查看启动窗口错误。' }
 Write-Host '推理核心已就绪，继续补齐完整ComfyUI模板资源。' -ForegroundColor Green
-& $pythonPath scripts/fetch_template_wheels.py
+& $pythonPath -E -s -X utf8 scripts/fetch_template_wheels.py
 if ($LASTEXITCODE -ne 0) { throw '模板资源下载失败，断点已保留，可重试。' }
 & $uvPath pip install --python $pythonPath --break-system-packages --find-links (Join-Path $packageRoot 'downloads\wheels') -r $requirementsPath
 if ($LASTEXITCODE -ne 0) { throw '依赖安装失败，请查看启动窗口错误。' }
-& $pythonPath scripts/check_environment.py
+& $pythonPath -E -s -X utf8 scripts/check_environment.py
 if ($LASTEXITCODE -ne 0) { throw '安装后的依赖与锁定版本不一致，请查看上方检查结果。' }
-& $pythonPath scripts/diagnose.py
+& $pythonPath -E -s -X utf8 scripts/diagnose.py
 if ($LASTEXITCODE -ne 0) { throw '环境诊断失败，请查看日志。' }
 Write-Host '环境准备完成。请运行 下载模型.cmd 或在界面配置已有模型路径。' -ForegroundColor Green

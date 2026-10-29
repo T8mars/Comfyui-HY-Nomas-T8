@@ -11,5 +11,7 @@ if not exist "%NOMAS_PYTHON%" (
 )
 echo 下载整合包所需的三个权重，读取界面中保存的自定义路径。
 echo 支持断点续传，下载完成后校验 SHA256。
-"%NOMAS_PYTHON%" scripts\download_models.py
+"%NOMAS_PYTHON%" -E -s -X utf8 scripts\download_models.py
+set "NOMAS_EXIT=%ERRORLEVEL%"
 pause
+exit /b %NOMAS_EXIT%

@@ -17,8 +17,8 @@ try {
     $python = Join-Path $root 'runtime\managed\cpython-3.12.9-windows-x86_64-none\python.exe'
     if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { Write-Host '运行环境尚未安装，请先补入兼容环境或运行「安装环境.cmd」。'; exit 1 }
     Write-Host 'Hy-Nomas 本地世界工作室 — By T8star'
-    if ($Mode -eq 'Studio') { & $python -m nomas_app.server --open }
-    else { & $python (Join-Path $root 'scripts/run_comfy.py') }
+    if ($Mode -eq 'Studio') { & $python -E -s -X utf8 -m nomas_app.server --open }
+    else { & $python -E -s -X utf8 (Join-Path $root 'scripts/run_comfy.py') }
     $code = $LASTEXITCODE
 } catch { Write-Host $_.Exception.Message -ForegroundColor Red; $code = 1 }
 finally { if ($owned) { $mutex.ReleaseMutex() }; $mutex.Dispose() }

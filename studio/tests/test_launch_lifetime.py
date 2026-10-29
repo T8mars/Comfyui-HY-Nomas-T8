@@ -14,6 +14,18 @@ STUDIO = Path(__file__).resolve().parents[1]
 REPO = STUDIO.parent
 
 
+def copy_test_runtime(python, runtime):
+    """Copy the real interpreter and standard library only; never site-packages/models."""
+    runtime.mkdir(parents=True)
+    shutil.copy2(python, runtime / "python.exe")
+    for path in python.parent.glob("*.dll"):
+        shutil.copy2(path, runtime / path.name)
+    shutil.copytree(python.parent / "Lib", runtime / "Lib",
+                    ignore=shutil.ignore_patterns("site-packages", "__pycache__", "test", "tests", "ensurepip"))
+    if (python.parent / "DLLs").is_dir():
+        shutil.copytree(python.parent / "DLLs", runtime / "DLLs")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--python-path", default=sys.executable)
@@ -41,10 +53,7 @@ def main():
         (root / "config/update-settings.json").write_text('{"auto_update":false}', encoding="utf-8")
         python = Path(args.python_path).resolve()
         runtime = root / "runtime/managed/cpython-3.12.9-windows-x86_64-none"
-        runtime.mkdir(parents=True)
-        shutil.copy2(python, runtime / "python.exe")
-        for path in python.parent.glob("*.dll"):
-            shutil.copy2(path, runtime / path.name)
+        copy_test_runtime(python, runtime)
         (root / "nomas_app").mkdir()
         (root / "nomas_app/__init__.py").write_text("", encoding="utf-8")
         ready = root / "studio-ready"

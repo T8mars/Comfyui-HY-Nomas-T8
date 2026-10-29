@@ -20,14 +20,26 @@ try {
     $statePath = Join-Path $cache 'state.json'
     $settingsPath = Join-Path $root 'config\update-settings.json'
     $interval = 24
+    $autoEnabled = $true
     if (Test-Path -LiteralPath $settingsPath) {
-        $settings = Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($Automatic -and $settings.PSObject.Properties.Name -contains 'auto_update' -and $settings.auto_update -eq $false) { return }
-        if ($settings.PSObject.Properties.Name -contains 'interval_hours') {
-            $interval = [int]$settings.interval_hours
-            if ($interval -lt 1 -or $interval -gt 168) { throw '更新检查间隔必须为 1–168 小时。' }
+        $settings = $null
+        try {
+            $settings = Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($settings -isnot [pscustomobject]) { throw 'Expected a settings object.' }
+        } catch { $settings = $null; Write-Host '更新设置无法读取，使用默认检查设置；原文件已保留。' }
+        if ($null -ne $settings) {
+            if ($settings.PSObject.Properties.Name -contains 'auto_update') {
+                if ($settings.auto_update -is [bool]) { $autoEnabled = $settings.auto_update }
+                else { Write-Host 'auto_update 必须为 JSON 布尔值，使用默认自动检查设置。' }
+            }
+            if ($settings.PSObject.Properties.Name -contains 'interval_hours') {
+                if (($settings.interval_hours -is [int] -or $settings.interval_hours -is [long]) -and
+                    $settings.interval_hours -ge 1 -and $settings.interval_hours -le 168) { $interval = $settings.interval_hours }
+                else { Write-Host 'interval_hours 必须为 1–168 的整数，使用默认 24 小时。' }
+            }
         }
     }
+    if ($Automatic -and -not $autoEnabled) { return }
     $versionPath = Join-Path $root 'app-version.json'
     if (-not (Test-Path -LiteralPath $versionPath)) { $versionPath = Join-Path $root 'versions.json' }
     $local = Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -66,6 +78,8 @@ try {
     [IO.Directory]::CreateDirectory($job) | Out-Null
     $manifestPath = Join-Path $job $manifestName
     Invoke-WebRequest -Uri $manifestAssets[0].browser_download_url -OutFile $manifestPath -TimeoutSec 30 @webOptions
+    $manifestBytes = (Get-Item -LiteralPath $manifestPath).Length
+    if ($manifestBytes -ne $manifestAssets[0].size -or $manifestBytes -gt 8388608) { throw '下载的更新清单实际大小与 Release 不匹配。' }
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-UpdateManifest $manifest
     if ($manifest.version -ne $version -or $manifest.archive.bytes -ne $archiveAssets[0].size) { throw 'Release 与清单版本/大小不匹配。' }

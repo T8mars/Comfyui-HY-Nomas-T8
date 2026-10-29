@@ -14,6 +14,7 @@ function fixture(deferStatuses=false) {
   };
   get('#resolution').value = '1280x704';
   const pending = [], statuses = [], requests = [];
+  let acceptActions=false;
   const context = vm.createContext({
     document: {querySelector: get, querySelectorAll: () => [], createElement: () => ({})},
     FormData: class {append(){} *[Symbol.iterator](){yield ['prompt_json', '']; yield ['seconds', '2'];}},
@@ -21,6 +22,7 @@ function fixture(deferStatuses=false) {
       requests.push(url);
       if (url === '/api/upload') return new Promise(resolve => pending.push(resolve));
       if (url === '/api/status' && deferStatuses) return new Promise((resolve,reject) => statuses.push({resolve,reject}));
+      if (url === '/api/generate' && acceptActions) return Promise.resolve({ok:true,json:async()=>({id:'accepted'})});
       return Promise.reject(new Error('No real network in UI fixture'));
     },
     URL: {createObjectURL: file => 'blob:' + file.name, revokeObjectURL(){}},
@@ -33,7 +35,7 @@ function fixture(deferStatuses=false) {
   const status = (index, state) => statuses[index].resolve({ok:true,json:async()=>({
     job:{state,message:state,progress:0}, session:{segments:0,archive_gib:0,clips:[]},models:[],ram_available_gib:40,
   })});
-  return {get, select, finish, fail, requests, context, status, statuses};
+  return {get, select, finish, fail, requests, context, status, statuses,acceptActions(){acceptActions=true;}};
 }
 async function main() {
   const checks = [];
@@ -74,6 +76,22 @@ async function main() {
     const f=fixture(true), older=vm.runInContext('refresh()',f.context), newer=vm.runInContext('refresh()',f.context);
     f.status(2,'running'); await newer; f.statuses[1].reject(new Error('older request disconnected')); await older;
     assert.equal(f.get('#message').textContent,'running');
+  });
+  await run('A pending newer poll does not starve completed status responses', async () => {
+    const f=fixture(true), completed=vm.runInContext('refresh()',f.context), pending=vm.runInContext('refresh()',f.context);
+    f.status(1,'running'); await completed;
+    assert.equal(f.get('#message').textContent,'running');
+    assert.equal(f.get('#generate').disabled,true);
+    f.status(2,'running'); await pending;
+  });
+  await run('A status captured before accepted generation cannot undo local busy state', async () => {
+    const f=fixture(true), older=vm.runInContext('refresh()',f.context);f.acceptActions();
+    const submission=f.get('#form').onsubmit({preventDefault(){}});
+    await new Promise(resolve=>setImmediate(resolve));
+    f.status(1,'idle');await older;
+    assert.equal(vm.runInContext('busy',f.context),true);
+    assert.equal(f.get('#generate').disabled,true);
+    f.status(2,'running');await submission;
   });
   console.log(JSON.stringify({passed:checks.every(x=>x.passed),checks},null,2));
   process.exitCode=checks.every(x=>x.passed)?0:1;

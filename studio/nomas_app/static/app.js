@@ -1,7 +1,7 @@
 const $ = s => document.querySelector(s);
 let mode = 'simple', imageId = null, busy = false, lastFiles = '', currentFile = '', lastJob = '';
 let imageUploadVersion = 0, imageUploading = false;
-let refreshVersion = 0;
+let refreshVersion = 0, appliedRefreshVersion = 0;
 function toast(text) { $('#toast').textContent = text; $('#toast').hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(()=>$('#toast').hidden=true,7000); }
 async function request(url, data) {
   const options = data === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)};
@@ -27,6 +27,7 @@ $('#image').onchange=async()=>{
 };
 function clearImage(clearInput=true){imageUploadVersion++;imageUploading=false;imageId=null;if(clearInput)$('#image').value='';if($('#image-preview').src.startsWith('blob:'))URL.revokeObjectURL($('#image-preview').src);$('#image-preview').hidden=true;}
 function clearPreview(){currentFile='';$('#video').pause();$('#video').removeAttribute('src');$('#video').load();$('#video').hidden=true;$('#empty').hidden=false;$('#export-link').hidden=true;}
+function taskStarted(){appliedRefreshVersion=++refreshVersion;busy=true;$('#generate').disabled=true;}
 $('#clear-image').onclick=()=>{clearImage();refresh();};
 $('#form').onsubmit=async event=>{
   event.preventDefault(); if(busy)return;
@@ -35,11 +36,11 @@ $('#form').onsubmit=async event=>{
   if(mode==='simple')data.prompt_json='';else if(!data.prompt_json.trim()){toast('请填写完整世界 JSON。');return;}
   const camera=$('#camera-preset').value;data.camera=camera==='custom'?data.camera:camera?`${camera} ${data.seconds}`:'';
   if(imageId)data.image_id=imageId;
-  try{await request('/api/generate',data);busy=true;$('#generate').disabled=true;await refresh();}catch(e){toast(e.message);}
+  try{await request('/api/generate',data);taskStarted();await refresh();}catch(e){toast(e.message);}
 };
 $('#cancel').onclick=async()=>{try{await request('/api/cancel',{});toast('正在取消，等待当前 GPU 操作结束。');}catch(e){toast(e.message);}};
-$('#reset').onclick=async()=>{if(!confirm('重置当前世界并释放模型与历史缓存？已导出的视频会保留。'))return;try{await request('/api/reset',{});clearImage();await refresh();}catch(e){toast(e.message);}};
-$('#export').onclick=async()=>{try{await request('/api/export',{});await refresh();}catch(e){toast(e.message);}};
+$('#reset').onclick=async()=>{if(!confirm('重置当前世界并释放模型与历史缓存？已导出的视频会保留。'))return;try{await request('/api/reset',{});taskStarted();clearImage();await refresh();}catch(e){toast(e.message);}};
+$('#export').onclick=async()=>{try{await request('/api/export',{});taskStarted();await refresh();}catch(e){toast(e.message);}};
 async function loadPaths(){
   try{const r=await request('/api/model-paths');for(const [key,value] of Object.entries(r.settings))$('#paths-form').elements.namedItem(key).value=value;}catch(e){toast(e.message);}
 }
@@ -55,7 +56,7 @@ function play(file){currentFile=file;$('#video').src='/outputs/'+file.split('/')
 async function refresh(){
   const version=++refreshVersion;
   try{
-    const s=await request('/api/status');if(version!==refreshVersion)return;const j=s.job,w=s.session;busy=j.state==='running';
+    const s=await request('/api/status');if(version<appliedRefreshVersion)return;appliedRefreshVersion=version;const j=s.job,w=s.session;busy=j.state==='running';
     $('#message').textContent=j.message;$('#message').style.color=j.state==='error'?'#c54b64':'';$('#progress').value=j.progress||0;$('#percent').textContent=Math.round((j.progress||0)*100)+'%';
     $('#generate').disabled=busy||imageUploading||s.models.some(m=>!m.ready);$('#generate').innerHTML=w.segments?'✦ 继续生成下一段':'✦ 开始生成';$('#cancel').disabled=!busy;$('#reset').disabled=busy;$('#export').disabled=busy||!w.segments;
     $('#save-paths').disabled=busy||w.segments>0;$('#default-paths').disabled=busy||w.segments>0;
@@ -66,6 +67,6 @@ async function refresh(){
     $('#models').replaceChildren(...s.models.map(m=>{const row=document.createElement('div');row.className='model-row';row.title=m.path+(m.error?'\n'+m.error:'');const name=document.createElement('span'),state=document.createElement('span');name.textContent=m.label+' · '+m.file;state.textContent=m.ready?'✓ '+(m.source==='custom'?'自定义路径':'默认路径'):'⚠ '+m.error;state.className=m.ready?'ready':'missing';row.append(name,state);return row;}));
     const files=JSON.stringify(w.clips.map(c=>c.file));if(files!==lastFiles){lastFiles=files;$('#timeline').replaceChildren();w.clips.forEach((clip,i)=>{const b=document.createElement('button');b.className='clip';b.dataset.file=clip.file;const title=document.createElement('b'),info=document.createElement('span');title.textContent=`片段 ${String(i+1).padStart(2,'0')}`;info.textContent=`${clip.seconds.toFixed(1)}s · ${clip.width}×${clip.height}`;b.append(title,info);b.onclick=()=>play(clip.file);$('#timeline').append(b);});if(w.clips.length){play(w.clips[w.clips.length-1].file);clearImage();}else{clearPreview();$('#timeline').innerHTML='<p class="timeline-empty">已完成的片段会出现在这里，点击即可预览。</p>';}}
     if(j.id&&j.id!==lastJob&&['done','error','cancelled'].includes(j.state)){lastJob=j.id;if(j.state==='error')toast(j.message);if(j.result?.file){$('#export-link').href='/outputs/'+j.result.file;$('#export-link').hidden=false;play(j.result.file);}}
-  }catch(e){if(version===refreshVersion)$('#message').textContent='无法连接本地服务，请检查启动窗口。';}
+  }catch(e){if(version>=appliedRefreshVersion){appliedRefreshVersion=version;$('#message').textContent='无法连接本地服务，请检查启动窗口。';}}
 }
 loadPaths();refresh();setInterval(refresh,1500);

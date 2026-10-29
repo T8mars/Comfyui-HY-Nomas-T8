@@ -1,7 +1,9 @@
 {
   "base_gpu_acceptance": "0.2.0",
-  "unchanged_gpu_model_engine_and_environment_files": 37,
-  "api_admission": "CPU interleavings, upload parsing and same-origin checks cover server.py; UI image/status ordering has controlled-response JavaScript tests",
-  "gpu_generation_repeated_for_0_2_3": false,
-  "installer_scope": "Post-install lock/diagnostic exit handling reviewed statically and parsed on Windows PowerShell 5.1; installer binaries and GPU generation were not run in this review"
+  "unchanged_baseline_source_fingerprints": 36,
+  "api_and_support": "CPU tests cover server receipt errors, output/model-path error isolation, UI polling order, downloader recovery and template wheel identity",
+  "form_clock": "Actual native CPU frame oracle verifies 1/3 and 2/3 second boundaries across 105 turns; whole-second and half-second image-start documents match 0.2.3",
+  "gpu_generation_repeated_for_0_2_4": false,
+  "launcher_scope": "Real bundled-interpreter CPU helpers verify conflicting PYTHONHOME/PYTHONPATH isolation and helper exit codes; no actual Studio service was started",
+  "installer_scope": "Installer Python argument isolation is statically checked and parsed on Windows PowerShell 5.1; installer binaries were not executed"
 }

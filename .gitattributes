@@ -1,2 +1,2 @@
 # Preserve tested runtime, patch and license bytes across Windows/Linux archives.
-* -text
+* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

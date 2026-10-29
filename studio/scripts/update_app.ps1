@@ -43,7 +43,7 @@ try {
     $local = Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $current = Get-UpdateVersion $local.version
     Write-Host "Hy-Nomas T8：检查程序更新（当前 $current）…"
-    $releases = @(Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=20" -TimeoutSec 15 @webOptions)
+    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=20" -TimeoutSec 15 @webOptions
     $candidates = @($releases | Where-Object {
         if ($_.draft -or $_.prerelease -or $_.tag_name -notmatch '^v(\d+\.\d+\.\d+)$') { return $false }
         $candidateVersion = $_.tag_name.Substring(1)

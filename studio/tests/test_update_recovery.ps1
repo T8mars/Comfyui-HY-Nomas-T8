@@ -1,5 +1,6 @@
 ﻿param([string]$Report)
 $ErrorActionPreference = 'Stop'
+$recoveryReportPath = $Report
 . (Join-Path $PSScriptRoot 'test_updater.ps1') -HelpersOnly
 $production = Join-Path (Split-Path -Parent $PSScriptRoot) 'scripts'
 $summary = @{passed=$false;checks=@()}
@@ -37,7 +38,7 @@ try {
     $summary.checks += 'Corrupt recovery state blocks launch with exit 33'
     $summary.passed = $true
 } finally {
-    if ($Report) { Write-UpdateJson $Report $summary }
+    if ($recoveryReportPath) { Write-UpdateJson $recoveryReportPath $summary }
     $resolved = [IO.Path]::GetFullPath($testRoot)
     if (-not $resolved.StartsWith($tempBase + '\',[StringComparison]::OrdinalIgnoreCase) -or (Split-Path -Leaf $resolved) -notmatch '^HyNomas-updater-test-[a-f0-9]{32}$') { throw 'Unsafe test cleanup' }
     Remove-Item -LiteralPath $resolved -Recurse -Force

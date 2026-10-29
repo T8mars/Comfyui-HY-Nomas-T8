@@ -2,7 +2,7 @@
 
 The program release includes all application/host Python source, native node source and applicable notices, but excludes the interpreter, site-packages, user data and weights.
 
-Use Python 3.12+ and the fixed upstream inputs:
+Use Python 3.12+ and the fixed upstream inputs. Program version comes from `studio/versions.json`; only Git-tracked program inputs ship. `docs/inference-source-lock.json` pins the reviewed inference/API files; unexpected vendor changes are rejected:
 
 - ComfyUI commit `63be2f9b82ad0dac88a7ceaa28a9cf3154125a18` (v0.42.1), with `patches/comfyui-cache-lifetime.patch` applied from the ComfyUI root.
 - Windows x86_64 `uv.exe` from [uv 0.5.31](https://github.com/astral-sh/uv/releases/tag/0.5.31); SHA256 `311ba603f935e850ffea25cbd798d7437ca1498f30128795823f0ff4778239ea`. uv's Apache/MIT licenses ship under `licenses/`.

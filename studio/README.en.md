@@ -2,14 +2,14 @@
 
 [简体中文](README.zh-CN.md) | **English**
 
-Windows program distribution with the pink-and-white studio, native nodes, ComfyUI 0.42.1 host sources and an updater. **Model weights, the Python interpreter and Python site-packages are excluded.** Program version: 0.2.1; inference code matches the GPU-validated 0.2.0 release.
+Windows program distribution with the pink-and-white studio, native nodes, ComfyUI 0.42.1 host sources and an updater. **Model weights, the Python interpreter and Python site-packages are excluded.** Program version: 0.2.2; model computation retains the GPU-validated 0.2.0 core; API admission and update fixes have CPU/online-upgrade regression coverage.
 
 ## Setup
 
 1. Download `Hy-Nomas-T8-Program-*-win64.zip` from [Releases](https://github.com/T8mars/Comfyui-HY-Nomas-T8/releases/latest) and extract it fully.
 2. Full-bundle authors: place a compatible environment under `runtime/managed/cpython-3.12.9-windows-x86_64-none/` and weights in their `models/` folders. The existing 0.2.0 environment is compatible. Retain the supplied launcher and update files.
 3. Users can wait for the author's complete bundle or manually run `安装环境.cmd` to install the pinned environment, then configure/download weights. Only that explicit installer downloads Python and dependencies.
-4. Run `启动整合包.cmd` for the studio or `启动ComfyUI原生节点.cmd` for native ComfyUI. Use one generation interface at a time.
+4. Run `启动整合包.cmd` for the studio or `启动ComfyUI原生节点.cmd` for native ComfyUI. The same installation runs one entry point at a time, with a lease covering startup, updates and application lifetime.
 
 Tested environment: Windows, Python 3.12.9, PyTorch 2.10.0+cu130, Triton Windows 3.6.0.post26. Recommended: NVIDIA 24GB VRAM and 64GB RAM. [Models/checksums](https://huggingface.co/t8star/HY-Nomas-Comfy); [detailed usage and measurements](docs/studio-guide.zh-CN.md).
 
@@ -21,7 +21,7 @@ Launchers check this repository's stable Release once every 24 hours by default.
 - `更新程序.cmd`: check and install now; close the studio and bundled ComfyUI first.
 - Set `{"auto_update": false}` in `config/update-settings.json` to disable launch-time updates. Optional `interval_hours`: 1–168.
 
-Only manifest-listed program files are replaced. Models, Python under `runtime/managed/`, settings, inputs, outputs, caches and other custom nodes are retained. Incompatible dependency locks require a matching full bundle. Old program files are backed up under `cache/updates/backups/`; installation failures roll back automatically and retain the backup.
+Only manifest-listed program files are replaced. Models, Python under `runtime/managed/`, settings, inputs, outputs, caches and other custom nodes are retained. Incompatible dependency locks require a matching full bundle. Old program files are backed up under `cache/updates/backups/`; installation failures roll back automatically and retain the backup. Interrupted updates restore verified backups before the next launch, even when automatic updates are disabled or checks are cached. Corrupt recovery backups block launch and retain the recovery record.
 
 For old full bundles without this updater, merge this program distribution into the existing root once, then use its launchers. The program ZIP and GitHub's generated “Source code” archives do not include a ready-to-run Python environment.
 

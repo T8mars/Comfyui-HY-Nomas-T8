@@ -2,13 +2,16 @@
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import zipfile
 from pathlib import Path
 
 STUDIO = Path(__file__).resolve().parent
 REPO = STUDIO.parent
-VERSION = "0.2.1"
+VERSION = json.loads((STUDIO / "versions.json").read_text(encoding="utf-8"))["version"]
+if not re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", VERSION):
+    raise ValueError("Invalid studio version")
 SKIP = {".git", ".github", "__pycache__", ".pytest_cache", "models", "user", "input", "output", "inputs", "outputs", "temp", "cache", "logs", "downloads", "custom_nodes", "tests", "tests-unit", ".ci"}
 
 
@@ -27,22 +30,28 @@ def build(comfy, uv, destination):
     revision = subprocess.check_output(["git", "-C", str(comfy), "rev-parse", "HEAD"], text=True).strip()
     if revision != "63be2f9b82ad0dac88a7ceaa28a9cf3154125a18":
         raise ValueError("Expected ComfyUI v0.42.1")
-    patch = subprocess.check_output(["git", "-C", str(comfy), "diff", "--", "execution.py"])
-    if b"del cache_results" not in patch:
-        raise ValueError("Expected the GPU-tested executor cache-reference fix")
+    dirty = subprocess.check_output(["git", "-C", str(comfy), "diff", "HEAD", "--name-only", "-z"]).split(b"\0")
+    if [name for name in dirty if name] != [b"execution.py"]:
+        raise ValueError("Unexpected changes in pinned ComfyUI sources")
+    if digest(comfy / "execution.py") != "996dfb64bc000cfc29a2f54105d1680b9ffaab069523eedd253911731917507a":
+        raise ValueError("Executor does not match the accepted cache-reference fix")
     files = {}
     def add(path, name):
         if name in files:
             raise ValueError(f"Duplicate payload path: {name}")
         files[name] = Path(path).read_bytes()
-    for directory in ["nomas_app", "scripts", "licenses", "docs"]:
-        for path in (STUDIO / directory).rglob("*"):
-            if path.is_file() and "__pycache__" not in path.parts:
-                add(path, path.relative_to(STUDIO).as_posix())
-    for path in STUDIO.iterdir():
-        if path.is_file() and (path.suffix in {".cmd", ".json", ".txt", ".md"} or path.name in {"LICENSE", "NOTICE"}):
-            add(path, path.name)
     native_names = subprocess.check_output(["git", "-C", str(REPO), "ls-files", "-z"], text=False).split(b"\0")
+    studio_root_files = {"LICENSE", "NOTICE", "README.zh-CN.md", "README.en.md", "BUILD.md", "versions.json",
+                         "requirements.txt", "requirements.lock.txt", "models.manifest.json"}
+    for encoded in native_names:
+        name = encoded.decode("utf-8")
+        if not name.startswith("studio/"):
+            continue
+        relative = name.removeprefix("studio/")
+        if any(part.startswith('.') or part == '__pycache__' for part in Path(relative).parts):
+            continue
+        if relative.startswith(("nomas_app/", "scripts/", "licenses/", "docs/")) or relative in studio_root_files or ("/" not in relative and relative.endswith(".cmd")):
+            add(STUDIO / relative, relative)
     excluded_native = {".git", ".github", "studio", "tests"}
     for encoded in native_names:
         if not encoded:
@@ -64,13 +73,19 @@ def build(comfy, uv, destination):
             continue
         add(comfy / path, "runtime/ComfyUI/" + name)
     files["tools/uv.exe"] = uv.read_bytes()
+    source_lock = json.loads((STUDIO / "docs/inference-source-lock.json").read_text(encoding="utf-8"))
+    for name, expected in source_lock.items():
+        if name not in files or hashlib.sha256(files[name]).hexdigest() != expected:
+            raise ValueError(f"Inference source differs from accepted release: {name}")
     files["app-version.json"] = (json.dumps({"app":"hy-nomas-t8-studio", "version":VERSION, "updater_schema":1}, indent=2) + "\n").encode()
     files["program-files.json"] = (json.dumps({"version":VERSION, "files":sorted(files)}, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     destination.mkdir(parents=True, exist_ok=True)
     archive = destination / f"Hy-Nomas-T8-Program-{VERSION}-win64.zip"
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as z:
         for name, data in sorted(files.items()):
-            if name.startswith(("runtime/managed/", "models/")) or name.endswith((".safetensors", ".ckpt", ".pth", ".pt", ".gguf", ".onnx", ".dll", ".pyd")):
+            if name.lower().startswith(("runtime/managed/", "models/")) or 'site-packages' in Path(name).parts or \
+                name.lower().endswith((".safetensors", ".ckpt", ".pth", ".pt", ".gguf", ".onnx", ".bin", ".h5", ".hdf5", ".pkl", ".dll", ".pyd")) or \
+                (name.lower().endswith('.exe') and name != 'tools/uv.exe'):
                 raise ValueError(f"Python/weight binary in program payload: {name}")
             z.writestr("Hy-Nomas-By-T8star/" + name, data)
     with zipfile.ZipFile(archive) as z:

@@ -103,7 +103,12 @@ def make_app(studio=None):
         if studio.engine.world is not None:
             raise web.HTTPConflict(text="更换模型前请先重置世界，以免将旧模型的历史用于新模型。")
         try:
-            settings, rows = studio.locations.save(await request.json())
+            payload = await request.json()
+            if studio.task is not None:
+                raise web.HTTPConflict(text="请等待当前任务结束后修改模型路径。")
+            if studio.engine.world is not None:
+                raise web.HTTPConflict(text="更换模型前请先重置世界，以免将旧模型的历史用于新模型。")
+            settings, rows = studio.locations.save(payload)
         except (ValueError, OSError) as exc:
             raise web.HTTPBadRequest(text=str(exc))
         return web.json_response({"settings": settings, "models": rows})
@@ -117,13 +122,18 @@ def make_app(studio=None):
             raise web.HTTPNotFound()
         if studio.task is not None:
             raise web.HTTPConflict(text="当前任务仍在运行，请等待或取消。")
-        payload = await request.json() if request.can_read_body else {}
+        try:
+            payload = await request.json() if request.can_read_body else {}
+        except ValueError as exc:
+            raise web.HTTPBadRequest(text="Invalid JSON body") from exc
         if not isinstance(payload, dict):
             raise web.HTTPBadRequest(text="Expected an object")
+        if studio.task is not None:
+            raise web.HTTPConflict(text="当前任务仍在运行，请等待或取消。")
         image_id = payload.pop("image_id", None)
         payload.pop("image_path", None)
-        if image_id:
-            if len(image_id) != 32 or any(c not in "0123456789abcdef" for c in image_id):
+        if image_id is not None:
+            if not isinstance(image_id, str) or len(image_id) != 32 or any(c not in "0123456789abcdef" for c in image_id):
                 raise web.HTTPBadRequest(text="Invalid image ID")
             path = ROOT / "inputs" / f"{image_id}.png"
             if not path.is_file():

@@ -2,15 +2,13 @@
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 . (Join-Path $PSScriptRoot 'update_core.ps1')
+. (Join-Path $PSScriptRoot 'release_catalog.ps1')
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $repo = 'T8mars/Comfyui-HY-Nomas-T8'
 $headers = @{ 'User-Agent' = 'Hy-Nomas-T8-Updater/1'; 'Accept' = 'application/vnd.github+json' }
 $webOptions = @{ UseBasicParsing = $true; Headers = $headers }
 if ($env:HTTPS_PROXY) { $webOptions.Proxy = $env:HTTPS_PROXY }
-$sha = [Security.Cryptography.SHA256]::Create()
-try { $key = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root.ToUpperInvariant()))).Replace('-','') }
-finally { $sha.Dispose() }
-$mutex = [Threading.Mutex]::new($false, "Local\HyNomasUpdate-$key")
+$mutex = New-ProgramMutex $root
 $ownsMutex = $false
 $exitCode = 0
 try {
@@ -18,6 +16,7 @@ try {
     if (-not $ownsMutex) { Write-Host '另一个更新正在运行，请稍后再启动。'; exit 32 }
     $cache = Join-Path $root 'cache\updates'
     Assert-NoReparse $root $cache
+    if (Restore-ProgramUpdate $root) { Write-Host '已从上次中断的更新中恢复原程序。' }
     $statePath = Join-Path $cache 'state.json'
     $settingsPath = Join-Path $root 'config\update-settings.json'
     $interval = 24
@@ -29,28 +28,27 @@ try {
             if ($interval -lt 1 -or $interval -gt 168) { throw '更新检查间隔必须为 1–168 小时。' }
         }
     }
+    $versionPath = Join-Path $root 'app-version.json'
+    if (-not (Test-Path -LiteralPath $versionPath)) { $versionPath = Join-Path $root 'versions.json' }
+    $local = Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $current = Get-UpdateVersion $local.version
     if ($Automatic -and (Test-Path -LiteralPath $statePath)) {
-        $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ([DateTimeOffset]::UtcNow -lt ([DateTimeOffset]::Parse($state.checked_at).AddHours($interval))) { return }
+        try {
+            $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $checked = [DateTimeOffset]::Parse($state.checked_at)
+            $now = [DateTimeOffset]::UtcNow
+            if ((Get-UpdateVersion $state.latest_version) -le $current -and $checked -le $now.AddMinutes(5) -and
+                $now -lt $checked.AddHours($interval)) { return }
+        } catch { Write-Host '更新检查缓存无效，重新检查版本。' }
     }
     if (-not $CheckOnly -and @(Get-ProgramProcesses $root).Count -gt 0) {
         Write-Host '当前整合包的 Python 仍在运行，暂不更新；关闭程序后再运行「更新程序.cmd」。'
         if (-not $Automatic) { throw '请先关闭当前整合包的 Python 进程。' }
         return
     }
-    $versionPath = Join-Path $root 'app-version.json'
-    if (-not (Test-Path -LiteralPath $versionPath)) { $versionPath = Join-Path $root 'versions.json' }
-    $local = Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    $current = Get-UpdateVersion $local.version
     Write-Host "Hy-Nomas T8：检查程序更新（当前 $current）…"
-    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=20" -TimeoutSec 15 @webOptions
-    $candidates = @($releases | Where-Object {
-        if ($_.draft -or $_.prerelease -or $_.tag_name -notmatch '^v(\d+\.\d+\.\d+)$') { return $false }
-        $candidateVersion = $_.tag_name.Substring(1)
-        return @($_.assets | Where-Object { $_.name -ceq "Hy-Nomas-T8-Program-$candidateVersion-manifest.json" }).Count -eq 1
-    } | Sort-Object { Get-UpdateVersion $_.tag_name.Substring(1) } -Descending)
-    if ($candidates.Count -eq 0) { Write-Host '暂未发布程序更新包。'; return }
-    $release = $candidates[0]
+    $release = Get-ProgramRelease -Repository $repo -WebOptions $webOptions
+    if ($null -eq $release) { Write-Host '暂未发布程序更新包。'; return }
     $version = $release.tag_name.Substring(1)
     $latest = Get-UpdateVersion $version
     Write-UpdateJson $statePath @{ checked_at = [DateTimeOffset]::UtcNow.ToString('o'); latest_version = $version }
@@ -71,7 +69,7 @@ try {
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-UpdateManifest $manifest
     if ($manifest.version -ne $version -or $manifest.archive.bytes -ne $archiveAssets[0].size) { throw 'Release 与清单版本/大小不匹配。' }
-    $lock = (Get-FileHash -LiteralPath (Join-Path $root 'requirements.lock.txt') -Algorithm SHA256).Hash.ToLowerInvariant()
+    $lock = (Get-ProgramHash (Join-Path $root 'requirements.lock.txt'))
     if ($lock -ne $manifest.runtime_lock_sha256) { throw '新版本需要另一套 Python/依赖，请使用对应完整版；当前环境已保留。' }
     if ($CheckOnly) { Write-Host "发现程序版本 $version。关闭程序后运行「更新程序.cmd」即可安装。"; return }
     $archive = Join-Path $job $archiveName
@@ -88,7 +86,7 @@ try {
     Write-Host "更新完成：$version。原程序备份：$backup" -ForegroundColor Green
 } catch {
     Write-Host "更新未完成：$($_.Exception.Message)" -ForegroundColor Yellow
-    if ($_.Exception.Message.StartsWith('ROLLBACK_INCOMPLETE:')) { $exitCode = 33 }
+    if ($_.Exception.Message -match '^(ROLLBACK_INCOMPLETE|RECOVERY_REQUIRED):') { $exitCode = 33 }
     elseif (-not $Automatic) { $exitCode = 1 }
     else { Write-Host '继续启动当前版本；稍后可运行「更新程序.cmd」重试。' }
 } finally {

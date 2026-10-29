@@ -1,4 +1,4 @@
-﻿param([string]$Report, [string]$PythonPath, [string]$BundleRoot)
+﻿param([string]$Report, [string]$PythonPath, [string]$BundleRoot, [switch]$HelpersOnly)
 $ErrorActionPreference = 'Stop'
 $core = Join-Path (Split-Path -Parent $PSScriptRoot) 'scripts\update_core.ps1'
 . $core
@@ -69,10 +69,12 @@ function Old-Install($Name) {
     return $root
 }
 
+if ($HelpersOnly) { return }
+
 try {
     foreach ($name in @('../escape.py','nomas_app/../escape.py','/root.py','nomas_app/A:stream.py','nomas_app/CON.py',
         'nomas_app/bad.','nomas_app/back\slash.py','models/a.safetensors','runtime/managed/python.exe',
-        'config/model_paths.json','outputs/video.mp4','runtime/ComfyUI/user/a.json',
+        'config/model_paths.json','outputs/video.mp4','runtime/ComfyUI/user/a.json','nomas_app/weights.bin','scripts/python.exe',
         'runtime/ComfyUI/custom_nodes/Mine/a.py','runtime/ComfyUI/extra_model_paths.yaml')) {
         Rejected { Assert-ProgramPath $name } "protected/unsafe path $name"
     }
@@ -83,7 +85,7 @@ try {
     Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object { $_.FullName -notmatch 'nomas_app|program-files.json|app-version.json' } | ForEach-Object {
         $sentinels[$_.FullName] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
     }
-    $backup = Join-Path $testRoot 'backup-success'
+    $backup = Join-Path $root 'cache/updates/backups/success'
     Install-ProgramUpdate $root $valid.Stage $valid.Manifest $backup | Out-Null
     Assert ((Get-Content -LiteralPath (Join-Path $root 'nomas_app/a.py') -Raw) -eq 'new a') 'New program not installed'
     Assert ((Get-Content -LiteralPath (Join-Path $backup 'nomas_app/a.py') -Raw) -eq 'old a') 'Old program not backed up'
@@ -96,6 +98,11 @@ try {
     Rejected { Expand-ProgramUpdate $bad.Archive $bad.Stage $bad.Manifest } 'Wrong per-file SHA256'
     $bad = Fixture 'duplicate'; $bad.Manifest.files += $bad.Manifest.files[0]
     Rejected { Assert-UpdateManifest $bad.Manifest } 'Duplicate manifest path'
+    foreach ($value in @('1',1.5,$true)) {
+        $bad = Fixture ('typed-size-' + [guid]::NewGuid().ToString('N'))
+        $bad.Manifest.files[0].bytes = $value
+        Rejected { Assert-UpdateManifest $bad.Manifest } ('Noninteger manifest byte size: ' + $value)
+    }
     $bad = Fixture 'zip-slip'
     $z = [IO.Compression.ZipFile]::Open($bad.Archive, [IO.Compression.ZipArchiveMode]::Update)
     try { $e=$z.CreateEntry('Hy-Nomas-By-T8star/../escape.py'); $s=$e.Open(); $s.Dispose() } finally { $z.Dispose() }
@@ -113,22 +120,29 @@ try {
     Archive-Metadata $bad
     Rejected { Expand-ProgramUpdate $bad.Archive $bad.Stage $bad.Manifest } 'Symbolic ZIP entry'
     $root = Old-Install 'incompatible'; Put $root 'requirements.lock.txt' 'different environment'
-    Rejected { Install-ProgramUpdate $root $valid.Stage $valid.Manifest (Join-Path $testRoot 'backup-incompatible') } 'Incompatible runtime lock'
+    Rejected { Install-ProgramUpdate $root $valid.Stage $valid.Manifest (Join-Path $root 'cache/updates/backups/incompatible') } 'Incompatible runtime lock'
     $root = Old-Install 'rollback'
     $locked = [IO.File]::Open((Join-Path $root 'nomas_app/z.py'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-    try { Rejected { Install-ProgramUpdate $root $valid.Stage $valid.Manifest (Join-Path $testRoot 'backup-rollback') } 'Locked destination triggers rollback' }
+    try { Rejected { Install-ProgramUpdate $root $valid.Stage $valid.Manifest (Join-Path $root 'cache/updates/backups/rollback') } 'Locked destination triggers rollback' }
     finally { $locked.Dispose() }
     Assert ((Get-Content -LiteralPath (Join-Path $root 'nomas_app/a.py') -Raw) -eq 'old a') 'Rollback failed for already replaced file'
     Assert ((Get-Content -LiteralPath (Join-Path $root 'app-version.json') -Raw | ConvertFrom-Json).version -eq '0.2.0') 'Version changed after rollback'
     Assert (-not (Test-Path -LiteralPath (Join-Path $root 'nomas_app/server.py'))) 'New file survived rollback'
     $results.Add('Rollback restores replaced code and old version; removes newly added files')
+    $tampered = Fixture 'stage-tamper'
+    Expand-ProgramUpdate $tampered.Archive $tampered.Stage $tampered.Manifest
+    Put $tampered.Stage 'nomas_app/a.py' 'changed after extraction'
+    $root = Old-Install 'stage-tamper'
+    Rejected { Install-ProgramUpdate $root $tampered.Stage $tampered.Manifest (Join-Path $root 'cache/updates/backups/stage-tamper') } 'Staged file changes after verification'
+    Assert ((Get-Content -LiteralPath (Join-Path $root 'nomas_app/a.py') -Raw) -eq 'old a') 'Tampered stage damaged current program'
+    Assert (-not (Test-Path -LiteralPath (Join-Path $root 'cache/updates/transaction.json'))) 'Successful rollback left a pending transaction'
     $root = Old-Install 'junction'
     Remove-Item -LiteralPath (Join-Path $root 'nomas_app/a.py'),(Join-Path $root 'nomas_app/z.py'),(Join-Path $root 'nomas_app/stale.py') -Force
     [IO.Directory]::Delete((Join-Path $root 'nomas_app'))
     $outside = Join-Path $testRoot 'outside'; [IO.Directory]::CreateDirectory($outside) | Out-Null
     $junction = Join-Path $root 'nomas_app'
     New-Item -ItemType Junction -Path $junction -Target $outside | Out-Null
-    Rejected { Install-ProgramUpdate $root $valid.Stage $valid.Manifest (Join-Path $testRoot 'backup-junction') } 'Linked destination'
+    Rejected { Install-ProgramUpdate $root $valid.Stage $valid.Manifest (Join-Path $root 'cache/updates/backups/junction') } 'Linked destination'
     [IO.Directory]::Delete($junction); $junction=$null
     if ($PythonPath -and $BundleRoot) {
         $child = Start-Process -FilePath $PythonPath -ArgumentList @('-c','"import time; time.sleep(45)"') -WindowStyle Hidden -PassThru

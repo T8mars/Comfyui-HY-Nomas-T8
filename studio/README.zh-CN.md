@@ -2,14 +2,14 @@
 
 **简体中文** | [English](README.en.md)
 
-Windows 程序版，包含粉白界面、原生节点、ComfyUI 0.42.1 宿主代码与自动更新器。**不包含模型、Python 解释器及其第三方环境。** 当前程序版本为 0.2.1，推理代码沿用已完成 GPU 验收的 0.2.0。
+Windows 程序版，包含粉白界面、原生节点、ComfyUI 0.42.1 宿主代码与自动更新器。**不包含模型、Python 解释器及其第三方环境。** 当前程序版本为 0.2.2，模型计算核心沿用 GPU 验收的 0.2.0；API 准入和更新边界修复通过 CPU/在线升级回归验证。
 
 ## 使用
 
 1. 从 [Releases](https://github.com/T8mars/Comfyui-HY-Nomas-T8/releases/latest) 下载 `Hy-Nomas-T8-Program-*-win64.zip` 并完整解压。
 2. 完整版制作者：将兼容环境放在 `runtime/managed/cpython-3.12.9-windows-x86_64-none/`，将三个权重放在 `models/` 对应目录；已有的 0.2.0 完整运行环境可直接复用。保留程序版的启动和更新文件。
 3. 普通使用者可等待作者的完整版；也可自行运行 `安装环境.cmd` 安装固定环境，再配置或下载模型。安装环境仅在手动执行时下载 Python 和依赖。
-4. 双击 `启动整合包.cmd` 打开工作室，或 `启动ComfyUI原生节点.cmd` 打开原生 ComfyUI。两个入口共用模型，生成时只运行一个。
+4. 双击 `启动整合包.cmd` 打开工作室，或 `启动ComfyUI原生节点.cmd` 打开原生 ComfyUI。两个入口共用模型，同一整合包一次运行一个入口；启动和更新全程互斥。
 
 环境：Windows、Python 3.12.9、PyTorch 2.10.0+cu130、Triton Windows 3.6.0.post26。建议 NVIDIA 24GB 显存、64GB RAM。[模型下载与校验](https://huggingface.co/t8star/HY-Nomas-Comfy)；模型路径、操作与实测范围见 [完整指南](docs/studio-guide.zh-CN.md)。
 
@@ -21,7 +21,7 @@ Windows 程序版，包含粉白界面、原生节点、ComfyUI 0.42.1 宿主代
 - `更新程序.cmd`：立即检查并安装。更新前先关闭工作室和本包 ComfyUI。
 - 在 `config/update-settings.json` 写入 `{"auto_update": false}` 可关闭启动自动更新；`interval_hours` 可设置 1–168 小时。
 
-更新只替换清单中的程序文件。`models/`、`runtime/managed/`、`config/`、`inputs/`、`outputs/`、缓存和其他自装节点保留。Python/依赖锁不兼容时停止更新并提示使用匹配完整版。更新前备份原程序到 `cache/updates/backups/`；写入失败自动回滚，备份保留。
+更新只替换清单中的程序文件。`models/`、`runtime/managed/`、`config/`、`inputs/`、`outputs/`、缓存和其他自装节点保留。Python/依赖锁不兼容时停止更新并提示使用匹配完整版。更新前备份原程序到 `cache/updates/backups/`；写入失败自动回滚，备份保留。更新中断时，下次启动会先核验并恢复旧程序；备份损坏时停止启动并保留恢复记录。恢复检查不会被关闭自动更新或检查缓存跳过。
 
 以前不含更新器的完整版，先手动将本程序版合并到同一根目录一次，后续从新启动入口运行即可自动更新。不要把程序版当作自带环境的一键完整版；本仓库自带的 GitHub “Source code” 压缩包也不是程序发行包。
 

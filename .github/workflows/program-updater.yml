@@ -7,6 +7,29 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Update verification, data retention and rollback
         shell: powershell
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_updater.ps1
+      - name: Release catalogue and interrupted-update recovery
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_release_catalog.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_update_recovery.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Controller cache and launcher lifetime
+        run: |
+          python studio/tests/test_update_controller.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python studio/tests/test_launch_lifetime.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: API admission and model-path regressions without GPU
+        run: |
+          python -m pip install aiohttp pillow psutil
+          python -m unittest discover -s studio/tests -p test_api_admission.py -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m unittest discover -s studio/tests -p test_model_paths_api.py -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

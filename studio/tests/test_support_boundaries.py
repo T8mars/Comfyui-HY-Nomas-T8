@@ -26,7 +26,7 @@ spec.loader.exec_module(oracle)
 class SupportServerTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="HyNomas support test ")
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         (self.root / "nomas_app/static").mkdir(parents=True)
         self.studio = server.Studio()
         self.root_patch = patch.object(server, "ROOT", self.root)

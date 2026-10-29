@@ -10,6 +10,8 @@ Run the Hy-Nomas video world model natively in ComfyUI: text/image starts, segme
 
 ## Installation
 
+For the standalone studio, download the [program Release](https://github.com/T8mars/Comfyui-HY-Nomas-T8/releases/latest). **Weights and the Python environment are excluded**; launch-time automatic updates are included. See the [program guide](https://github.com/T8mars/Comfyui-HY-Nomas-T8/blob/main/studio/README.en.md) for full-bundle assembly and update settings. Native-node installation follows below.
+
 Search **Hy-Nomas T8** in ComfyUI-Manager (publisher: `t8star`), install and restart. While a Registry version awaits review, install from the Git URL:
 
 ```bash

@@ -10,6 +10,8 @@
 
 ## 安装
 
+需要独立工作室界面时，请下载 [程序版 Release](https://github.com/T8mars/Comfyui-HY-Nomas-T8/releases/latest)：**不含模型和 Python 环境**，支持启动前自动更新。完整版制作与更新设置见 [程序版说明](https://github.com/T8mars/Comfyui-HY-Nomas-T8/blob/main/studio/README.zh-CN.md)。下方为独立原生节点的安装方式。
+
 在 ComfyUI-Manager 搜索 **Hy-Nomas T8**（Publisher：`t8star`），安装后重启。Registry 版本通过审核前，可从 Git URL 安装：
 
 ```bash

@@ -4,3 +4,4 @@ tests/
 pytest.ini
 assets/
 docs/upstream-readme.md
+studio/

@@ -1,0 +1,30 @@
+{
+  "package": "Hy-Nomas T8 Local Studio",
+  "brand": "By T8star",
+  "version": "0.2.1",
+  "status": "Program-only release; inference core unchanged from GPU-accepted 0.2.0",
+  "sources": {
+    "native_nodes": {
+      "url": "https://github.com/PedroMarinhoDev/ComfyUI-Hy-Nomas",
+      "commit": "712614ecf1d57a7159f9ab96b7894152f3195a26",
+      "local_modifications": "custom_nodes/ComfyUI-HyNomas-T8/NOTICE"
+    },
+    "comfyui": {
+      "url": "https://github.com/Comfy-Org/ComfyUI",
+      "tag": "v0.42.1",
+      "commit": "63be2f9b82ad0dac88a7ceaa28a9cf3154125a18",
+      "local_modifications": "execution.py releases temporary cache probe references; see NOTICE and custom_nodes/ComfyUI-HyNomas-T8/patches/comfyui-cache-lifetime.patch"
+    }
+  },
+  "runtime_targets": {
+    "python": "3.12.9",
+    "torch": "2.10.0+cu130",
+    "torchvision": "0.25.0+cu130",
+    "triton_windows": "3.6.0.post26",
+    "transformers": "4.57.1",
+    "uv": "0.5.31"
+  },
+  "uv_sha256": "311ba603f935e850ffea25cbd798d7437ca1498f30128795823f0ff4778239ea",
+  "models": "models.manifest.json",
+  "evidence": "evidence/"
+}

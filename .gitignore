@@ -10,3 +10,7 @@ dist/
 .env
 .env.*
 roadmap.md
+studio/runtime/
+studio/tools/
+studio/cache/
+studio/config/

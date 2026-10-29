@@ -1,0 +1,12 @@
+name: Validate Windows program updater
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  powershell-51:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Update verification, data retention and rollback
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File studio/tests/test_updater.ps1

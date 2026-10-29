@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hy-Nomas 本地世界工作室 · By T8star</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+  <header class="hero">
+    <div class="brand"><div class="mark">H<span>y</span></div><div><p class="eyebrow">LOCAL WORLD STUDIO</p><h1>Hy-Nomas <span>世界工作室</span></h1></div></div>
+    <div class="credit"><span class="local-pill"><i></i> 本地运行</span><strong>By T8star</strong></div>
+  </header>
+  <div class="intro"><p>从一个想法出发，让世界继续发生。</p><span>文字 · 图片起始 · 镜头控制 · 连续生成</span></div>
+  <main class="workspace">
+    <section class="panel controls">
+      <div class="panel-heading"><h2>创作设置</h2><span class="tag">24GB 配置</span></div>
+      <div class="tabs"><button class="active" data-tab="simple">场景编辑</button><button data-tab="json">结构化 JSON</button></div>
+      <form id="form">
+        <div id="simple-pane">
+          <label>主体<input name="subject" value="a small orange fox" placeholder="谁出现在这个世界里？"></label>
+          <label>外观描述<input name="appearance" value="A small orange fox with a white chest and fluffy tail, filmed from an external third-person viewpoint."></label>
+          <div class="row"><label>画面风格<select name="style"><option>Cinematic fantasy</option><option>real-world footage</option><option>animation/anime</option><option>CG</option><option>video game</option></select></label><label>视角<select name="perspective"><option>third-person observer</option><option>third-person follow</option><option>first-person</option><option>second-person</option></select></label></div>
+          <label>初始场景<textarea name="scene" rows="4">A quiet stone path winds through a luminous forest. Soft morning light filters through tall trees. Moss-covered rocks and blue wildflowers line the path, with a gentle mist in the distance.</textarea></label>
+          <label>主体动作<input name="action" value="walks slowly forward along the stone path" placeholder="例如：turns around and looks at the camera"></label>
+          <label>续接时的场景变化<textarea name="change" rows="2" placeholder="留空则延续原场景；例如：blue flowers glow beside the path"></textarea></label>
+          <p class="hint">推荐用英文描述场景与动作。提示词在本地整理，不调用云端服务。</p>
+        </div>
+        <div id="json-pane" hidden><label>完整世界脚本<textarea name="prompt_json" rows="18" spellcheck="false" placeholder='{"Style":"CG","subject_list":[...],"segments":[...]}'></textarea></label><p class="hint">续接时保留已生成的段落，并在 segments 末尾添加新段落。</p></div>
+        <details class="image-box"><summary>从图片开始 <span>可选</span></summary><input id="image" type="file" accept="image/png,image/jpeg,image/webp"><div class="image-info"><img id="image-preview" hidden alt="起始图片预览"><button type="button" class="text-button" id="clear-image">清除图片</button></div><p class="hint">只用于新世界。先将图片写入历史，再生成后续运动。</p></details>
+        <div class="divider"></div>
+        <div class="row"><label>画面尺寸<select id="resolution"><option value="832x480">832 × 480 · 轻量</option><option value="1280x704">1280 × 704 · 高清</option><option value="480x832">480 × 832 · 竖屏</option><option value="640x384">640 × 384 · 预览</option></select></label><label>每段时长<select name="seconds"><option value="1">1 秒</option><option value="2" selected>2 秒</option><option value="3">3 秒</option><option value="5">5 秒</option></select></label></div>
+        <label>镜头运动<select id="camera-preset"><option value="">固定镜头</option><option value="W">向前推进</option><option value="S">向后拉远</option><option value="A">向左平移</option><option value="D">向右平移</option><option value="D+Left">环绕主体</option><option value="custom">自定义时间线</option></select></label>
+        <label id="custom-camera" hidden>镜头时间线<input name="camera" placeholder="W 1, D+Left 1"></label>
+        <details><summary>高级设置</summary><div class="row"><label>种子<input type="number" name="seed" value="42" min="0" step="1"></label><label>采样步数<input type="number" name="steps" value="8" min="1" max="50"></label></div><label>历史缓存预算 <span class="muted">GiB · 系统内存</span><input type="number" name="cache_gib" value="12" min="1" max="32"></label><div class="row"><label>主模型运算<select name="matmul"><option value="int8">INT8 加速</option><option value="exact">BF16 诊断</option></select></label><label>解码运算<select name="decoder_matmul"><option value="fp8">FP8 加速</option><option value="dequant">BF16 诊断</option></select></label></div><p class="hint">达到预算后先导出并重置。更高预算需要更多系统内存。</p></details>
+        <button class="primary" type="submit" id="generate"><span>✦</span> 开始生成</button>
+        <div class="secondary-actions"><button type="button" id="cancel" disabled>取消任务</button><button type="button" id="reset">重置世界</button></div>
+      </form>
+    </section>
+    <section class="results">
+      <div class="panel preview-panel"><div class="panel-heading"><h2>世界预览</h2><span id="session-label" class="muted">等待第一段画面</span></div>
+        <div class="preview"><video id="video" controls playsinline hidden></video><div id="empty"><div class="orb">✦</div><h3>你的世界，从这里开始</h3><p>描述场景，选择镜头，让每一段画面接着发生。</p><div class="empty-tags"><span>本地生成</span><span>分段续接</span><span>可控镜头</span></div></div></div>
+        <div class="progress-area"><div class="progress-label"><span id="message" role="status">正在检查运行环境…</span><span id="percent">0%</span></div><progress id="progress" max="1" value="0"></progress></div>
+      </div>
+      <div class="stats"><div><span>已生成</span><strong id="segment-count">0 <small>段</small></strong></div><div><span>历史缓存</span><strong id="archive">0.00 <small>GiB</small></strong></div><div><span>可用内存</span><strong id="ram">— <small>GiB</small></strong></div></div>
+      <div class="panel timeline-panel"><div class="panel-heading"><h2>片段时间线</h2><button id="export" class="outline" disabled>导出完整视频 ↗</button></div><div id="timeline"><p class="timeline-empty">已完成的片段会出现在这里，点击即可预览。</p></div><a id="export-link" class="download-link" hidden download>下载完整视频</a></div>
+      <div class="panel model-panel"><div class="panel-heading"><h2>模型与运行状态</h2><span class="tag subtle">离线推理</span></div><div id="models"></div>
+        <details id="model-settings"><summary>模型路径设置 <span>复用已有模型库</span></summary>
+          <form id="paths-form">
+            <label>模型根目录<input name="model_root" placeholder="留空使用整合包 models 目录" spellcheck="false" autocomplete="off"></label>
+            <p class="hint">支持 ComfyUI 的 models 目录、官方模型目录或平铺目录。也可在下面分别指定文件；单独指定的文件优先。</p>
+            <label>DiT 主模型文件<input name="dit" placeholder="例如 E:\模型库\hy_nomas_distil_int8.safetensors" spellcheck="false" autocomplete="off"></label>
+            <label>视频解码器文件<input name="decoder" placeholder="PixelUMM FP8 的 .safetensors 完整路径" spellcheck="false" autocomplete="off"></label>
+            <label>文本编码器文件<input name="text_encoder" placeholder="Qwen 2.5 VL 7B FP8 scaled 的 .safetensors 完整路径" spellcheck="false" autocomplete="off"></label>
+            <div class="path-actions"><button class="outline" id="save-paths" type="submit">检查并保存路径</button><button class="text-button" id="default-paths" type="button">恢复默认路径</button></div>
+            <p id="paths-message" class="hint" role="status">设置会自动记住，模型直接从原位置读取。相对路径以整合包目录为起点。</p>
+          </form>
+        </details>
+        <p class="hint">使用本整合包模型清单中的三个权重；文件可以改名。模型缺失时，请运行「下载模型.cmd」。首次运行会编译 GPU 算子，耗时通常高于后续运行。</p></div>
+    </section>
+  </main>
+  <footer><span>Hy-Nomas 本地世界工作室 <b>By T8star</b></span><span>PixelUMM 权重限非商用研究 / 评估使用 · 详见整合包许可证说明</span></footer>
+</div>
+<div id="toast" role="alert" hidden></div>
+<script src="/static/app.js"></script>
+</body></html>

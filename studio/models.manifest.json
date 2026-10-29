@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "dit",
+      "repo": "tencent/Hy-Nomas",
+      "revision": "c67f2c52b3fbe0193cbc202769bbe5cb7264807b",
+      "remote": "DiT/distilled_int8/diffusion_pytorch_model_ema_0_995_int8.safetensors",
+      "local": "models/diffusion_models/hy_nomas_distil_int8.safetensors",
+      "size": 9059126120,
+      "sha256": "973fa409f3b009232db3c83feddc89c5326fc3a5672feb791f0989ea8bf83252",
+      "license": "Tencent Hy-Nomas model card: Apache-2.0"
+    },
+    {
+      "id": "decoder",
+      "repo": "tencent/Hy-Nomas",
+      "revision": "c67f2c52b3fbe0193cbc202769bbe5cb7264807b",
+      "remote": "VAE/PixelUMM_FT_FP8/diffusion_pytorch_model_fp8.safetensors",
+      "local": "models/vae/hy_nomas_pixelumm_fp8.safetensors",
+      "size": 9134846208,
+      "sha256": "5ada04d7cedf9fe95bbaf87b4a8c0334944b312af5571568853b37d9b7256d78",
+      "license": "PixelUMM upstream weights: NVIDIA One-Way Noncommercial License; research/evaluation only"
+    },
+    {
+      "id": "text_encoder",
+      "repo": "Comfy-Org/Qwen-Image_ComfyUI",
+      "revision": "1f12b17be14c89b026c51a91d67c32f84bb047bc",
+      "remote": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "local": "models/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "size": 9384670680,
+      "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4",
+      "license": "Qwen2.5-VL-7B: Apache-2.0"
+    }
+  ]
+}

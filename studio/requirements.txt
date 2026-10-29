@@ -1,0 +1,7 @@
+-r runtime/ComfyUI/requirements.txt
+torch==2.10.0
+torchvision==0.25.0
+transformers==4.57.1
+triton-windows==3.6.0.post26; sys_platform == 'win32'
+huggingface-hub>=0.36,<1
+pytest>=8,<9

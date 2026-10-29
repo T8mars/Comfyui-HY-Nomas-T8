@@ -1,0 +1,38 @@
+Hy-Nomas Local Studio and native ComfyUI integration — By T8star
+
+This local distribution contains a GPL-3.0 derivative of
+PedroMarinhoDev/ComfyUI-Hy-Nomas, pinned in versions.json. The upstream
+LICENSE and NOTICE are preserved in custom_nodes/ComfyUI-HyNomas-T8.
+Tencent Hy-Nomas source notices and the Apache-2.0 license remain in
+that package's docs/upstream directory.
+
+T8 additions (2026): local Chinese UI with pink/white branding; in-process
+inference orchestration; portable Windows launchers; custom model paths;
+verified resumable downloads; explicit history budgets and cleanup;
+transactional continuation; bounded-memory MP4 export and diagnostics.
+
+ComfyUI, CPython, uv, PyTorch, Triton and their dependencies retain their
+own licenses and notices. Their source/version information is recorded
+in versions.json and the installed package metadata. Existing license
+files within the bundled runtimes must be retained when redistributing.
+
+Bundled ComfyUI host change (2026-10-28): release temporary cache-probe
+references after collecting cached node IDs, so RAM-pressure eviction can
+release unused cached models during repeated prompts. The upstream source
+commit remains recorded in versions.json; this local change is covered by
+tests/test_executor_cache_lifetime.py. Standalone-node users can apply the
+included patches/comfyui-cache-lifetime.patch to the matching ComfyUI host.
+
+Model weights are downloaded separately. PixelUMM model weights and
+derivatives are labeled NVIDIA One-Way Noncommercial License by NVIDIA;
+research/evaluation only. Do not apply this code distribution's GPL-3.0
+or Tencent's source-code Apache-2.0 license to every model weight.
+See models.manifest.json and the original model cards:
+https://huggingface.co/tencent/Hy-Nomas
+https://huggingface.co/nvidia/PixelUMM
+https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI
+
+This package is a T8 derivative and is not represented as an official
+Tencent, NVIDIA, Comfy-Org or PedroMarinhoDev release.
+
+T8star program distribution 0.2.1 adds a PowerShell launch-time updater, verified program manifests, backups and rollback. Inference sources retain their previously tested bytes. ComfyUI sources include the documented cache-reference fix; Python/site-packages and model weights are not distributed in the program ZIP.

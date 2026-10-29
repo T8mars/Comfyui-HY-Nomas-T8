@@ -1,0 +1,12 @@
+--- a/execution.py
++++ b/execution.py
+@@ -769,6 +769,9 @@
+                     node_id for node_id, result in zip(node_ids, cache_results)
+                     if result is not None
+                 ]
++                # Keep only node IDs: retaining these entries would prevent the
++                # RAM-pressure cache from releasing unused models during decode.
++                del cache_results
+ 
+                 comfy.model_management.cleanup_models_gc()
+                 self.add_message("execution_cached",

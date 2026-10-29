@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.safetensors
+*.gguf
+models/
+outputs/
+dist/
+.env
+.env.*
+roadmap.md

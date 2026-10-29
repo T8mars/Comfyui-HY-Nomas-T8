@@ -1,0 +1,30 @@
+[project]
+name = "hy-nomas-t8"
+version = "0.2.0"
+description = "Native Hy-Nomas world-model nodes with INT8/FP8 inference, camera control, CPU archive budgets and lifecycle cleanup. By T8star."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+classifiers = ["Operating System :: OS Independent", "Environment :: GPU :: NVIDIA CUDA"]
+dependencies = [
+  "numpy>=1.25",
+  "Pillow>=10.1",
+  "scipy>=1.11",
+  "safetensors>=0.4.3",
+  "typing-extensions>=4.10",
+  "comfy-kitchen>=0.2.39",
+  "triton-windows==3.6.0.post26; sys_platform == 'win32'",
+  "triton>=3.6; sys_platform == 'linux'",
+]
+
+[project.urls]
+Repository = "https://github.com/T8mars/Comfyui-HY-Nomas-T8"
+Documentation = "https://github.com/T8mars/Comfyui-HY-Nomas-T8#readme"
+"Bug Tracker" = "https://github.com/T8mars/Comfyui-HY-Nomas-T8/issues"
+Models = "https://huggingface.co/t8star/HY-Nomas-Comfy"
+
+[tool.comfy]
+PublisherId = "t8star"
+DisplayName = "Hy-Nomas T8 · By T8star"
+Icon = "https://raw.githubusercontent.com/T8mars/Comfyui-HY-Nomas-T8/main/assets/icon.svg"
+requires-comfyui = ">=0.42.1"

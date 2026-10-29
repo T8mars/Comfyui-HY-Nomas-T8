@@ -1,0 +1,6 @@
+# Development/media files stay on GitHub; runtime, guides and license notices ship.
+.github/
+tests/
+pytest.ini
+assets/
+docs/upstream-readme.md

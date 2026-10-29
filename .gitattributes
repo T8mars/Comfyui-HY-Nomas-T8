@@ -1,0 +1,2 @@
+# Preserve tested runtime, patch and license bytes across Windows/Linux archives.
+* -text

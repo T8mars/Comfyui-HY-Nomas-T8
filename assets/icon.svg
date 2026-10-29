@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+<defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#fff6fa"/><stop offset="1" stop-color="#f3b6d0"/></linearGradient></defs>
+<rect width="400" height="400" rx="88" fill="url(#g)"/><circle cx="200" cy="164" r="103" fill="none" stroke="#b54e80" stroke-width="9"/>
+<ellipse cx="200" cy="164" rx="103" ry="38" fill="none" stroke="#b54e80" stroke-width="7"/><ellipse cx="200" cy="164" rx="40" ry="103" fill="none" stroke="#b54e80" stroke-width="7"/>
+<rect x="124" y="124" width="152" height="82" rx="24" fill="#fff8fc"/><text x="200" y="184" text-anchor="middle" font-family="Arial,sans-serif" font-size="61" font-weight="700" fill="#34283e">T8</text>
+<text x="200" y="320" text-anchor="middle" font-family="Arial,sans-serif" font-size="34" font-weight="700" fill="#34283e">HY-NOMAS</text><text x="200" y="353" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#8b4265">By T8star</text></svg>
